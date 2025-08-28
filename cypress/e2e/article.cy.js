@@ -1,41 +1,49 @@
 describe('', () => {
   let user;
-  const article = {
-    title: 'title',
-    description: 'description',
-    body: 'body',
-    tags: ['tag1', 'tag2']
-  };
 
-  before(() => {
-    cy.visit('/');
-
+  beforeEach(() => {
     cy.task('generateUser').then((generatedUser) => {
       user = generatedUser;
-
       cy.register(user.email, user.username, user.password);
+
+      cy.visit('/');
     });
   });
 
-  it('should create and delete article', () => {
-    cy.visit('/');
+  it('should create an article and check it exists', () => {
+    cy.task('generateArticle').then((generatedArticle) => {
+      cy.createArticle(
+        generatedArticle.title,
+        generatedArticle.description,
+        generatedArticle.body
+      );
 
-    cy.contains('a', 'New Article').click();
-
-    cy.get('[placeholder="Article Title"]').type(article.title);
-    cy.get(`[placeholder="What's this article about?"]`).type(article.description);
-    cy.get('[placeholder="Write your article (in markdown)"]')
-      .type(article.body);
-    article.tags.forEach((tag) => {
-      cy.get('[placeholder="Enter tags"]').type(`${tag}{enter}`);
+      cy.contains('a', 'Global Feed').click();
+      cy.get('.col-md-9').contains(user.username.toLowerCase())
+        .should('be.visible');
+      cy.get('.col-md-9').contains(`Article title: ${generatedArticle.title}`)
+        .should('be.visible');
     });
+  });
 
-    cy.contains('button', 'Publish Article').click();
+  it('should create another article and delete it', () => {
+    cy.task('generateArticle').then((generatedArticle) => {
+      cy.createArticle(
+        generatedArticle.title,
+        generatedArticle.description,
+        generatedArticle.body
+      );
 
-    cy.contains('.author', user.username.toLowerCase()).should('be.visible');
+      cy.contains('a', 'Global Feed').click();
+      cy.get('.col-md-9').contains(`Article title: ${generatedArticle.title}`)
+        .should('be.visible').click();
 
-    cy.contains('button', ' Delete Article').should('be.visible').click();
+      cy.contains('button', 'Delete Article').click();
 
-    cy.url().should('include', '/');
+      cy.visit('/');
+      cy.contains('a', 'Global Feed').click();
+      cy.get('.col-md-9').contains(`Article title: ${generatedArticle.title}`)
+        .should('not.exist');
+    });
   });
 });
